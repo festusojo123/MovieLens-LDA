@@ -9,9 +9,6 @@
 #create all user profiles by summing ratings for all movies (100 values overall, one for each of 100 topics output by LDA)
 #call function to produce a certain user's user profile
 
-#big question:
-#lastly, how do we actually output a set of movie recommendations based on the topics they rated highly
-
 import csv
 import sys
 from csv import reader
@@ -24,85 +21,79 @@ import pickle
 import scipy.stats as sc
 import math
 
-# #associate them w their movieIDs in a big dict
-# topicdist= defaultdict(list)
-# with open('mallet.csv', 'r') as read_obj:
-# 	# pass the file object to reader() to get the reader object
-# 	csv_reader = reader(read_obj)
-# 	# Pass reader object to list() to get a list of lists
-# 	list_of_rows = list(csv_reader)
+#associate movies topic distribution output from MALLET run w their movieIDs in single dict titled topicdist
+topicdist= defaultdict(list)
+with open('mallet.csv', 'r') as read_obj:
+	# pass the file object to reader() to get the reader object
+	csv_reader = reader(read_obj)
+	# Pass reader object to list() to get a list of lists
+	list_of_rows = list(csv_reader)
 
 # #make list of topicdists for each movie
-# for row in list_of_rows:
-# 	for x in row[2:]:
-# 		topicdist[row[1]].append(x)
+for row in list_of_rows:
+	for x in row[2:]:
+		topicdist[row[1]].append(x)
 		
-# #opens ratings for all 
-# reader = csv.DictReader(open('ratings.csv','r'))
-# dict_list = []
-# #finding sum rating for each user for later use
-# usersRatingsSum = defaultdict(int)
-# for line in reader:
-# 	dict_list.append(line)
-# 	usersRatingsSum[line['user_id']] += (int(line['rating']))
+#opens ratings for all 
+reader = csv.DictReader(open('ratings.csv','r'))
+dict_list = []
+#finding sum rating for each user for later use
+usersRatingsSum = defaultdict(int)
+for line in reader:
+	dict_list.append(line)
+	usersRatingsSum[line['user_id']] += (int(line['rating']))
 
-# #replace all w topic distribution from mallet
-# for x in dict_list:
-# 	x['movie_id'] = topicdist.get(x.get('movie_id'))
+#replace all w topic distribution from mallet
+for x in dict_list:
+	x['movie_id'] = topicdist.get(x.get('movie_id'))
 
-# #normalize ratings based on sum
-# #multiply by value
-# for x in dict_list:
-# 	x['rating'] = float(x['rating'])/float(usersRatingsSum.get(x.get('user_id')))
-# 	if x['movie_id'] is not None:
-# 		for val in x['movie_id']:
-# 			val = float(val) * float(x['rating'])
+#normalize ratings based on sum
+#multiply by value
+for x in dict_list:
+	x['rating'] = float(x['rating'])/float(usersRatingsSum.get(x.get('user_id')))
+	if x['movie_id'] is not None:
+		for val in x['movie_id']:
+			val = float(val) * float(x['rating'])
 
-# # print(dict_list)
+#converts keys from MALLET back to topics using ordering from csv (made .txt file from mallet output to parse easier), stores in dict titled topicKeys
+f = open('topic-keys.txt','r')
+out = f.readlines() 
+topicKeys = defaultdict(list)
+counter = 0
+for x in out:
+	topicKeys[counter] = x.rstrip('\n')
+	counter += 1
 
-# #convert back to topics by ordering from csv (made txt from mallet output to parse easier), store in dict
-# f = open('topic-keys.txt','r')
-# out = f.readlines() 
-# topicKeys = defaultdict(list)
-# counter = 0
-# for x in out:
-# 	topicKeys[counter] = x.rstrip('\n')
-# 	counter += 1
+#creates all user profiles
+def save_user_profiles():
+	allUsers = defaultdict(list)
+	for users in range(6040):
+		tmp_listforusr = []
+		for reviews in dict_list:
+			if reviews['user_id'] == str(users):
+				if reviews['movie_id']:
+					#have to convert str to floats
+					floats = list(map(float, reviews['movie_id']))
+					tmp_listforusr.append(floats)
+		sums = np.sum(tmp_listforusr, axis=0)
+		allUsers[users] = (sums)
 
-# #creates all user profiles
-# def save_user_profiles():
-# 	allUsers = defaultdict(list)
-# 	for users in range(6040):
-# 		tmp_listforusr = []
-# 		for reviews in dict_list:
-# 			if reviews['user_id'] == str(users):
-# 				if reviews['movie_id']:
-# 					#have to convert str to floats
-# 					floats = list(map(float, reviews['movie_id']))
-# 					tmp_listforusr.append(floats)
-# 		sums = np.sum(tmp_listforusr, axis=0)
-# 		allUsers[users] = (sums)
-# 	print(allUsers)
-
-# 	with open('user_profiles.p', 'wb') as fp:
-# 		pickle.dump(allUsers, fp, protocol=pickle.HIGHEST_PROTOCOL)
+	with open('user_profiles.p', 'wb') as fp:
+		pickle.dump(allUsers, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# # gets particular user's profile
-# def getUserProfile(id):
-# 	userdict = {}
-# 	counter = 0
-# 	currList = allUsers.get(id)
-# 	for rating in currList:
-# 		userdict[topicKeys[counter]] = rating
-# 		counter += 1
-# 	print(userdict)
+#gets particular user's profile
+def getUserProfile(id):
+	userdict = {}
+	counter = 0
+	currList = allUsers.get(id)
+	for rating in currList:
+		userdict[topicKeys[counter]] = rating
+		counter += 1
+	print(userdict)
 
-# save_user_profiles()
-# getUserProfile(1)
-
-
-
+#save_user_profiles() -- can alternatively load from pickle file to save time (used for experimentation purposes)
+#getUserProfile(1)
 
 #takes specific userID # to generate recommendations for
 user_of_interest = int(sys.argv[1])
@@ -113,12 +104,8 @@ allUsers = {}
 with open('user_profiles.p', 'rb') as fp:
 	allUsers = pickle.load(fp)
 
-# print(len(allUsers.keys()))
-
 # takes in latent topic vectors
 def topic_similarity(u1, u2):
-	# print(u1.shape)
-	# print(u2.shape)
 	entropy = sc.entropy(u1, u2)
 	return math.exp(entropy)
 
@@ -150,16 +137,16 @@ def rating_similarity(object1, object2):
     return result
 
 
-# def load_ratings_matrix():
-# 	path = 'ratings.csv'
-# 	ratings_df = pd.read_csv(path)
-# 	ratings_mat = np.zeros((6041, 3953), dtype=int)
-# 	for index, row in ratings_df.iterrows():
-# 		ratings_mat[row['user_id'], row['movie_id']] = row['rating']
-# 	np.savetxt('ratings_mat.csv', ratings_mat, delimiter=',')
-# 	return ratings_mat
+def load_ratings_matrix():
+	path = 'ratings.csv'
+	ratings_df = pd.read_csv(path)
+	ratings_mat = np.zeros((6041, 3953), dtype=int)
+	for index, row in ratings_df.iterrows():
+		ratings_mat[row['user_id'], row['movie_id']] = row['rating']
+	np.savetxt('ratings_mat.csv', ratings_mat, delimiter=',')
+	return ratings_mat
 
-# ratings_mat = load_ratings_matrix()
+ratings_mat = load_ratings_matrix()
 ratings_mat = np.loadtxt(open("ratings_mat.csv", "rb"), delimiter=",")
 
 def build_sim_matrix(user_mat, ratings_mat, n_users=size_of_neighborhood):
