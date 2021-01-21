@@ -1,7 +1,7 @@
 # MovieLens-LDA
 
 ## Usage Instructions ##
-To run our LDA implementation on the MovieLens 1M dataset, after downloading the bolded necessary files (**recommender.py**, **movies.csv**, and **user_profiles.p**), run `recommender.py userID num_of_recs size_of_neighborhood` where argv[1] is the userID of interest, argv[2] is how many movie recommendations to output, and argv[3] is the size of the neighborhood to build the similarity matrix for.
+To run our LDA implementation on the MovieLens 1M dataset, after downloading the bolded necessary files (**recommender.py**, **movies.csv**, and **user_profiles.p**), run `python recommender.py userID num_of_recs size_of_neighborhood` where argv[1] is the userID of interest, argv[2] is how many movie recommendations to output, and argv[3] is the size of the neighborhood to build the similarity matrix for.
 
 For example, running `python recommender.py 5 10 10` will output the following recommendation list:
 
